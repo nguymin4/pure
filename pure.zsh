@@ -651,9 +651,66 @@ prompt_pure_reset_prompt_symbol() {
 	prompt_pure_state[prompt]=${PURE_PROMPT_SYMBOL:-❯}
 }
 
+# `zle-line-pre-redraw` is not triggered on line init
+# so also bind to `zle-line-init` to force to reset vi mode indicator
+_vi_mode_line_init() {
+	typeset -g VI_KEYMAP="viins"
+	zle prompt_pure_update_vim_prompt_widget
+}
+
+_vi_mode_line_pre_redraw() {
+  local prev_vi_keymap="${VI_KEYMAP}"
+  case "${KEYMAP}" in
+    vicmd)
+      case "${REGION_ACTIVE}" in
+        1) VI_KEYMAP="vivis" ;;
+        2) VI_KEYMAP="vivli" ;;
+        *) VI_KEYMAP="vicmd" ;;
+      esac
+      ;;
+    viins|main)
+      if [[ "${ZLE_STATE}" == *overwrite* ]]; then
+        VI_KEYMAP="replace"
+      else
+        VI_KEYMAP="viins"
+      fi
+      ;;
+  esac
+
+  if [[ "$VI_KEYMAP" != "$prev_vi_keymap" ]]; then
+    zle prompt_pure_update_vim_prompt_widget
+  fi
+}
+
 prompt_pure_update_vim_prompt_widget() {
 	setopt localoptions noshwordsplit
-	prompt_pure_state[prompt]=${${KEYMAP/vicmd/${PURE_PROMPT_VICMD_SYMBOL:-❮}}/(main|viins)/${PURE_PROMPT_SYMBOL:-❯}}
+
+	local arrow=""
+	local text_fg_1="$FG[255]"
+	local text_fg_2="$FG[255]"
+	if grep -Fq 'edge-dark.vim' $HOME/.vimrc; then
+		text_fg_2="$FG[236]"
+	fi
+
+	local vi_mode=""
+	case "${VI_KEYMAP}" in
+		(vicmd)  vi_mode="\
+%{$bg[green]%}$text_fg_2 NORMAL %{$reset_color%}\
+%{$fg[green]%}$arrow%{$reset_color%}" ;;
+		(main|viins)  vi_mode="\
+%{$bg[blue]%}$text_fg_1 INSERT %{$reset_color%}\
+%{$fg[blue]%}$arrow%{$reset_color%}" ;;
+		(vivis)  vi_mode="\
+%{$bg[magenta]%}$text_fg_1 VISUAL %{$reset_color%}\
+%{$fg[magenta]%}$arrow%{$reset_color%}" ;;
+		(vivli)  vi_mode="\
+%{$bg[magenta]%}$text_fg_1 V-LINE %{$reset_color%}\
+%{$fg[magenta]%}$arrow%{$reset_color%}" ;;
+		(replace)  vi_mode="\
+%{$bg[yellow]%}$text_fg_2 REPLACE %{$reset_color%}\
+%{$fg[yellow]%}$arrow%{$reset_color%}" ;;
+	esac
+	prompt_pure_state[prompt]=${vi_mode}
 
 	prompt_pure_reset_prompt
 }
@@ -847,7 +904,10 @@ prompt_pure_setup() {
 	zle -N prompt_pure_reset_vim_prompt_widget
 	if (( $+functions[add-zle-hook-widget] )); then
 		add-zle-hook-widget zle-line-finish prompt_pure_reset_vim_prompt_widget
-		add-zle-hook-widget zle-keymap-select prompt_pure_update_vim_prompt_widget
+
+		# Use zle-line-pre-redraw instead of zle-keymap-select to support vi visual mode
+		add-zle-hook-widget zle-line-pre-redraw _vi_mode_line_pre_redraw
+		add-zle-hook-widget zle-line-init _vi_mode_line_init
 	fi
 
 	# If a virtualenv is activated, display it in grey.
