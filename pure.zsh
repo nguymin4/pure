@@ -68,7 +68,7 @@ prompt_pure_set_title() {
 	local hostname=
 	if [[ -n $prompt_pure_state[username] ]]; then
 		# Expand in-place in case ignore-escape is used.
-		hostname="${(%):-(%m) }"
+		hostname="${(%):-%m: }"
 	fi
 
 	local -a opts
