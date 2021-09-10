@@ -60,7 +60,7 @@ prompt_pure_set_title() {
 	(( ${+EMACS} || ${+INSIDE_EMACS} )) && return
 
 	case $TTY in
-		# Don't set title over serial console.
+		# Do not set title over serial console.
 		/dev/ttyS[0-9]*) return;;
 	esac
 
@@ -68,7 +68,7 @@ prompt_pure_set_title() {
 	local hostname=
 	if [[ -n $prompt_pure_state[username] ]]; then
 		# Expand in-place in case ignore-escape is used.
-		hostname="${(%):-(%m) }"
+		hostname="${(%):-%m: }"
 	fi
 
 	local -a opts
@@ -125,6 +125,7 @@ prompt_pure_preprompt_render() {
 
 	# Set color for Git branch/dirty status and change color if dirty checking has been delayed.
 	local git_color=$prompt_pure_colors[git:branch]
+	local git_clean_color=$prompt_pure_colors[git:clean]
 	local git_dirty_color=$prompt_pure_colors[git:dirty]
 	[[ -n ${prompt_pure_git_last_dirty_check_timestamp+x} ]] && git_color=$prompt_pure_colors[git:branch:cached]
 
@@ -145,7 +146,13 @@ prompt_pure_preprompt_render() {
 	# Git branch and dirty status info.
 	typeset -gA prompt_pure_vcs_info
 	if [[ -n $prompt_pure_vcs_info[branch] ]]; then
-		preprompt_parts+=("%F{$git_color}"'${prompt_pure_vcs_info[branch]}'"%F{$git_dirty_color}"'${prompt_pure_git_dirty}%f')
+		if [[ -n $prompt_pure_git_dirty ]]; then
+			preprompt_parts+=("%F{$git_dirty_color}"' ${prompt_pure_vcs_info[branch]}')
+			# preprompt_parts+=("%F{$git_dirty_color}"'✖︎ %f')
+		else
+			preprompt_parts+=("%F{$git_clean_color}"' ${prompt_pure_vcs_info[branch]}')
+			# preprompt_parts+=("%F{$git_clean_color}"'● %f')
+		fi
 	fi
 	# Git action (for example, merge).
 	if [[ -n $prompt_pure_vcs_info[action] ]]; then
@@ -159,6 +166,18 @@ prompt_pure_preprompt_render() {
 	if [[ -n $prompt_pure_git_stash ]]; then
 		preprompt_parts+=('%F{$prompt_pure_colors[git:stash]}${PURE_GIT_STASH_SYMBOL:-≡}%f')
 	fi
+
+	# Time
+	preprompt_parts+=('%f[%*]')
+
+	# nodejs
+	if [[ -f package.json || -d node_modules ]]; then
+		node_version=$(node -v 2>/dev/null)
+		[[ -n $node_version ]] && preprompt_parts+=('%F{$prompt_pure_colors[nodejs]}⬢ $node_version%f')
+	fi
+
+	# virtualenv
+	preprompt_parts+=('%(12V.%F{$prompt_pure_colors[virtualenv]} %12v%f .)')
 
 	# Execution time.
 	[[ -n $prompt_pure_cmd_exec_time ]] && preprompt_parts+=('%F{$prompt_pure_colors[execution_time]}${prompt_pure_cmd_exec_time}%f')
@@ -216,15 +235,17 @@ prompt_pure_precmd() {
 	# Check if we should display the virtual env. We use a sufficiently high
 	# index of psvar (12) here to avoid collisions with user defined entries.
 	psvar[12]=
-	# Check if a Conda environment is active and display its name.
-	if [[ -n $CONDA_DEFAULT_ENV ]]; then
-		psvar[12]="${CONDA_DEFAULT_ENV//[$'\t\r\n']}"
-	fi
+
 	# When VIRTUAL_ENV_DISABLE_PROMPT is empty, it was unset by the user and
 	# Pure should take back control.
 	if [[ -n $VIRTUAL_ENV ]] && [[ -z $VIRTUAL_ENV_DISABLE_PROMPT || $VIRTUAL_ENV_DISABLE_PROMPT = 12 ]]; then
 		psvar[12]="${VIRTUAL_ENV:t}"
 		export VIRTUAL_ENV_DISABLE_PROMPT=12
+	fi
+
+	# Check if a Conda environment is active and display its name.
+	if [[ -n $CONDA_DEFAULT_ENV ]]; then
+		psvar[12]="${CONDA_DEFAULT_ENV//[$'\t\r\n']}"
 	fi
 
 	# Nix package manager integration. If used from within 'nix shell' - shell name is shown like so:
@@ -871,10 +892,11 @@ prompt_pure_setup() {
 		execution_time       yellow
 		git:arrow            cyan
 		git:stash            cyan
-		git:branch           242
+		git:branch           cyan
 		git:branch:cached    red
 		git:action           yellow
-		git:dirty            218
+		git:clean            cyan
+		git:dirty            red
 		host                 green
 		path                 yellow
 		prompt:error         red
@@ -883,7 +905,8 @@ prompt_pure_setup() {
 		suspended_jobs       red
 		user                 green
 		user:root            default
-		virtualenv           242
+		nodejs               green
+		virtualenv           blue
 	)
 	prompt_pure_colors=("${(@kv)prompt_pure_colors_default}")
 
@@ -903,15 +926,11 @@ prompt_pure_setup() {
 		add-zle-hook-widget zle-line-init _vi_mode_line_init
 	fi
 
-	# If a virtualenv is activated, display it in grey.
-	PROMPT='%(12V.%F{$prompt_pure_colors[virtualenv]}%12v%f .)'
+	PROMPT=''
 
 	# Prompt turns red if the previous command didn't exit with 0.
 	local prompt_indicator='%(?.%F{$prompt_pure_colors[prompt:success]}.%F{$prompt_pure_colors[prompt:error]})${prompt_pure_state[prompt]}%f '
 	PROMPT+=$prompt_indicator
-
-	# Indicate continuation prompt by … and use a darker color for it.
-	PROMPT2='%F{$prompt_pure_colors[prompt:continuation]}… %(1_.%_ .%_)%f'$prompt_indicator
 
 	# Store prompt expansion symbols for in-place expansion via (%). For
 	# some reason it does not work without storing them in a variable first.
