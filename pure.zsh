@@ -125,6 +125,7 @@ prompt_pure_preprompt_render() {
 
 	# Set color for Git branch/dirty status and change color if dirty checking has been delayed.
 	local git_color=$prompt_pure_colors[git:branch]
+	local git_clean_color=$prompt_pure_colors[git:clean]
 	local git_dirty_color=$prompt_pure_colors[git:dirty]
 	[[ -n ${prompt_pure_git_last_dirty_check_timestamp+x} ]] && git_color=$prompt_pure_colors[git:branch:cached]
 
@@ -145,7 +146,12 @@ prompt_pure_preprompt_render() {
 	# Git branch and dirty status info.
 	typeset -gA prompt_pure_vcs_info
 	if [[ -n $prompt_pure_vcs_info[branch] ]]; then
-		preprompt_parts+=("%F{$git_color}"'${prompt_pure_vcs_info[branch]}'"%F{$git_dirty_color}"'${prompt_pure_git_dirty}%f')
+		preprompt_parts+=("on %F{$git_color}"'${prompt_pure_vcs_info[branch]}')
+		if [[ -n $prompt_pure_git_dirty ]]; then
+			preprompt_parts+=("%F{$git_dirty_color}"'✖︎ %f')
+		else
+			preprompt_parts+=("%F{$git_clean_color}"'● %f')
+		fi
 	fi
 	# Git action (for example, merge).
 	if [[ -n $prompt_pure_vcs_info[action] ]]; then
@@ -838,10 +844,11 @@ prompt_pure_setup() {
 		execution_time       yellow
 		git:arrow            cyan
 		git:stash            cyan
-		git:branch           242
+		git:branch           cyan
 		git:branch:cached    red
 		git:action           yellow
-		git:dirty            218
+		git:clean            green
+		git:dirty            red
 		host                 green
 		path                 yellow
 		prompt:error         red
