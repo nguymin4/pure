@@ -653,7 +653,31 @@ prompt_pure_reset_prompt_symbol() {
 
 prompt_pure_update_vim_prompt_widget() {
 	setopt localoptions noshwordsplit
-	prompt_pure_state[prompt]=${${KEYMAP/vicmd/${PURE_PROMPT_VICMD_SYMBOL:-❮}}/(main|viins)/${PURE_PROMPT_SYMBOL:-❯}}
+
+	ARROW=''
+	NORMAL_FG="$FG[255]"
+	if grep -Fq 'edge-dark.vim' $HOME/.vimrc; then
+		NORMAL_FG="%{$fg[black]%}"
+	fi
+
+	case ${KEYMAP} in
+		(vicmd)  VI_MODE="\
+%{$bg[green]%}$NORMAL_FG NORMAL %{$reset_color%}\
+%{$fg[green]%}$ARROW%{$reset_color%}%{$reset_color%}" ;;
+		(main|viins)  VI_MODE="\
+%{$bg[blue]%}$FG[255] INSERT %{$reset_color%}\
+%{$fg[blue]%}$ARROW%{$reset_color%}" ;;
+		(vivis)  VI_MODE="\
+%{$bg[magenta]%}$FG[255] VISUAL %{$reset_color%}\
+%{$fg[magenta]%}$ARROW%{$reset_color%}" ;;
+		(vivli)  VI_MODE="\
+%{$bg[magenta]%}$FG[255] V-LINE %{$reset_color%}\
+%{$fg[magenta]%}$ARROW%{$reset_color%}" ;;
+		(*)  VI_MODE="\
+%{$bg[blue]%}$FG[255] INSERT %{$reset_color%}\
+%{$fg[blue]%}$ARROW%{$reset_color%}" ;;
+	esac
+	prompt_pure_state[prompt]=${VI_MODE}
 
 	prompt_pure_reset_prompt
 }
