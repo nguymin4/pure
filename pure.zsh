@@ -762,14 +762,7 @@ prompt_pure_state_setup() {
 	fi
 
 	hostname='%F{$prompt_pure_colors[host]}@%m%f'
-	# Show `username@host` if logged in through SSH.
-	[[ -n $ssh_connection ]] && username='%F{$prompt_pure_colors[user]}%n%f'"$hostname"
-
-	# Show `username@host` if inside a container and not in GitHub Codespaces.
-	[[ -z "${CODESPACES}" ]] && prompt_pure_is_inside_container && username='%F{$prompt_pure_colors[user]}%n%f'"$hostname"
-
-	# Show `username@host` if root, with username in default color.
-	[[ $UID -eq 0 ]] && username='%F{$prompt_pure_colors[user:root]}%n%f'"$hostname"
+	username='%F{$prompt_pure_colors[user]}%n%f'"$hostname"
 
 	typeset -gA prompt_pure_state
 	prompt_pure_state[version]="1.23.0"
@@ -882,13 +875,13 @@ prompt_pure_setup() {
 		git:branch:cached    red
 		git:action           yellow
 		git:dirty            218
-		host                 242
-		path                 blue
+		host                 green
+		path                 yellow
 		prompt:error         red
 		prompt:success       magenta
 		prompt:continuation  242
 		suspended_jobs       red
-		user                 242
+		user                 green
 		user:root            default
 		virtualenv           242
 	)
