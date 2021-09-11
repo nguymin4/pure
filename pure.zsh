@@ -60,7 +60,7 @@ prompt_pure_set_title() {
 	(( ${+EMACS} || ${+INSIDE_EMACS} )) && return
 
 	case $TTY in
-		# Don't set title over serial console.
+		# Do not set title over serial console.
 		/dev/ttyS[0-9]*) return;;
 	esac
 
@@ -146,11 +146,12 @@ prompt_pure_preprompt_render() {
 	# Git branch and dirty status info.
 	typeset -gA prompt_pure_vcs_info
 	if [[ -n $prompt_pure_vcs_info[branch] ]]; then
-		preprompt_parts+=("on %F{$git_color}"'${prompt_pure_vcs_info[branch]}')
 		if [[ -n $prompt_pure_git_dirty ]]; then
-			preprompt_parts+=("%F{$git_dirty_color}"'✖︎ %f')
+			preprompt_parts+=("%F{$git_dirty_color}"' ${prompt_pure_vcs_info[branch]}')
+			# preprompt_parts+=("%F{$git_dirty_color}"'✖︎ %f')
 		else
-			preprompt_parts+=("%F{$git_clean_color}"'● %f')
+			preprompt_parts+=("%F{$git_clean_color}"' ${prompt_pure_vcs_info[branch]}')
+			# preprompt_parts+=("%F{$git_clean_color}"'● %f')
 		fi
 	fi
 	# Git action (for example, merge).
@@ -165,6 +166,18 @@ prompt_pure_preprompt_render() {
 	if [[ -n $prompt_pure_git_stash ]]; then
 		preprompt_parts+=('%F{$prompt_pure_colors[git:stash]}${PURE_GIT_STASH_SYMBOL:-≡}%f')
 	fi
+
+	# Time
+	preprompt_parts+=('%f[%*]')
+
+	# nodejs
+	if [[ -f package.json || -d node_modules ]]; then
+		node_version=$(node -v 2>/dev/null)
+		preprompt_parts+=('%F{$prompt_pure_colors[nodejs]}⬢ $node_version%f')
+	fi
+
+	# virtualenv
+	preprompt_parts+=('%(12V.%F{$prompt_pure_colors[virtualenv]}  %12v%f .)')
 
 	# Execution time.
 	[[ -n $prompt_pure_cmd_exec_time ]] && preprompt_parts+=('%F{$prompt_pure_colors[execution_time]}${prompt_pure_cmd_exec_time}%f')
@@ -847,7 +860,7 @@ prompt_pure_setup() {
 		git:branch           cyan
 		git:branch:cached    red
 		git:action           yellow
-		git:clean            green
+		git:clean            cyan
 		git:dirty            red
 		host                 green
 		path                 yellow
@@ -857,7 +870,8 @@ prompt_pure_setup() {
 		suspended_jobs       red
 		user                 green
 		user:root            default
-		virtualenv           242
+		nodejs               green
+		virtualenv           blue
 	)
 	prompt_pure_colors=("${(@kv)prompt_pure_colors_default}")
 
@@ -874,15 +888,11 @@ prompt_pure_setup() {
 		add-zle-hook-widget zle-keymap-select prompt_pure_update_vim_prompt_widget
 	fi
 
-	# If a virtualenv is activated, display it in grey.
-	PROMPT='%(12V.%F{$prompt_pure_colors[virtualenv]}%12v%f .)'
+	PROMPT=''
 
 	# Prompt turns red if the previous command didn't exit with 0.
 	local prompt_indicator='%(?.%F{$prompt_pure_colors[prompt:success]}.%F{$prompt_pure_colors[prompt:error]})${prompt_pure_state[prompt]}%f '
 	PROMPT+=$prompt_indicator
-
-	# Indicate continuation prompt by … and use a darker color for it.
-	PROMPT2='%F{$prompt_pure_colors[prompt:continuation]}… %(1_.%_ .%_)%f'$prompt_indicator
 
 	# Store prompt expansion symbols for in-place expansion via (%). For
 	# some reason it does not work without storing them in a variable first.
