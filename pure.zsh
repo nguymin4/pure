@@ -177,7 +177,7 @@ prompt_pure_preprompt_render() {
 	fi
 
 	# virtualenv
-	preprompt_parts+=('%(12V.%F{$prompt_pure_colors[virtualenv]}  %12v%f .)')
+	preprompt_parts+=('%(12V.%F{$prompt_pure_colors[virtualenv]} %12v%f .)')
 
 	# Execution time.
 	[[ -n $prompt_pure_cmd_exec_time ]] && preprompt_parts+=('%F{$prompt_pure_colors[execution_time]}${prompt_pure_cmd_exec_time}%f')
@@ -235,15 +235,17 @@ prompt_pure_precmd() {
 	# Check if we should display the virtual env. We use a sufficiently high
 	# index of psvar (12) here to avoid collisions with user defined entries.
 	psvar[12]=
-	# Check if a Conda environment is active and display its name.
-	if [[ -n $CONDA_DEFAULT_ENV ]]; then
-		psvar[12]="${CONDA_DEFAULT_ENV//[$'\t\r\n']}"
-	fi
+
 	# When VIRTUAL_ENV_DISABLE_PROMPT is empty, it was unset by the user and
 	# Pure should take back control.
 	if [[ -n $VIRTUAL_ENV ]] && [[ -z $VIRTUAL_ENV_DISABLE_PROMPT || $VIRTUAL_ENV_DISABLE_PROMPT = 12 ]]; then
 		psvar[12]="${VIRTUAL_ENV:t}"
 		export VIRTUAL_ENV_DISABLE_PROMPT=12
+	fi
+
+	# Check if a Conda environment is active and display its name.
+	if [[ -n $CONDA_DEFAULT_ENV ]]; then
+		psvar[12]="${CONDA_DEFAULT_ENV//[$'\t\r\n']}"
 	fi
 
 	# Nix package manager integration. If used from within 'nix shell' - shell name is shown like so:
